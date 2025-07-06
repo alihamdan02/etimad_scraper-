@@ -1,0 +1,8 @@
+uvicorn
+playwright
+mysql-connector-python
+pandas
+streamlit
+python-dotenv
+tqdm
+loguru
