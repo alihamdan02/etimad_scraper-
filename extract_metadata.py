@@ -31,8 +31,8 @@ async def extract_metadata(sub_category: str) -> List[Dict[str, str]]:
                     try:
                         logger.debug(f"Attempt {nav_attempt + 1}: Navigating to Etimad...")
                         await page.goto("https://tenders.etimad.sa/Tender/AllTendersForVisitor",
-                                        wait_until="networkidle",
-                                        timeout=90000)
+                                        # wait_until="networkidle",
+                                        timeout=60000)
                         break
                     except Exception as e:
                         logger.warning(f"Navigation attempt {nav_attempt + 1} failed: {e}")

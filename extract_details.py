@@ -48,7 +48,7 @@ async def extract_single_tender(page, link: str) -> Optional[Dict[str, str]]:
         try:
             await page.goto(
                 link, 
-                wait_until="networkidle",
+                # wait_until="networkidle",
                 timeout=SCRAPER_CONFIG["timeout"]
             )
             
