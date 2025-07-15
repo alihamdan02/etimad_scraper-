@@ -2,7 +2,7 @@ import asyncio
 from typing import List, Dict
 from tqdm import tqdm
 from db import db_manager
-from extract_metadata import extract_all_metadata, MAIN_TO_SUB
+from extract_metadata import extract_all_metadata
 from extract_details import extract_all_details
 from config import LOGGING_CONFIG, SCRAPER_CONFIG
 import logging
@@ -29,8 +29,7 @@ class ScraperOrchestrator:
                 return
 
             logger.info("Starting detail extraction phase")
-            links = [item["Link"] for item in metadata]
-            details = await extract_all_details(links)
+            details = await extract_all_details(metadata)
 
             logger.info("Starting data persistence phase")
             success_count = 0

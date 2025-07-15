@@ -1,11 +1,12 @@
 from playwright.async_api import async_playwright
-from config import SCRAPER_CONFIG, LOGGING_CONFIG, MAIN_TO_SUB
+from config import SCRAPER_CONFIG, LOGGING_CONFIG
 from db import db_manager
 import logging
 import logging.config
 import asyncio
 from typing import List, Dict
 import sys
+from utils import generate_main_to_sub_mapping
 
 # Fix Windows console encoding for Arabic logs
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -14,11 +15,28 @@ sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger("etimad.metadata")
 
+MAIN_TO_SUB = generate_main_to_sub_mapping()
+
+def get_classification_id(sub_category: str) -> int:
+    """Retrieve classification_id for a sub_category from etimad_classifications."""
+    try:
+        query = """
+            SELECT id AS key_word_id, classification_id FROM etimad_classification_keywords 
+            WHERE keyword_en = %s OR keyword_ar = %s
+            LIMIT 1
+        """
+        result = db_manager.fetch_all(query, (sub_category, sub_category), dictionary=True)
+        return (result[0]['key_word_id'], result[0]['classification_id']) if result else None
+    except Exception as e:
+        logger.error(f"Error fetching classification_id for {sub_category}: {e}")
+        return None
 
 async def extract_metadata(sub_category: str) -> List[Dict[str, str]]:
     logger.info(f"Starting metadata extraction for: {sub_category}")
     results = []
 
+    # Get classification_id for the sub_category
+    key_word_id, classification_id = get_classification_id(sub_category)
     for attempt in range(SCRAPER_CONFIG["max_retries"]):
         try:
             async with async_playwright() as p:
@@ -56,8 +74,8 @@ async def extract_metadata(sub_category: str) -> List[Dict[str, str]]:
                 if not cards:
                     logger.warning(f"No relevant result found for: {sub_category}")
                     db_manager.log_scraping(
-                        category=next((k for k, v in MAIN_TO_SUB.items() if sub_category in v), "Unknown"),
-                        subcategory=sub_category,
+                        key_word_id=key_word_id,
+                        classification_id=classification_id,
                         count=0,
                         status="success",
                         error="No relevant tenders found"
@@ -83,7 +101,8 @@ async def extract_metadata(sub_category: str) -> List[Dict[str, str]]:
                             results.append({
                                 "Title": title.strip(),
                                 "Link": full_link.strip(),
-                                "SubCategory": sub_category  # For downstream use
+                                "SubCategory": sub_category,  # For downstream use
+                                "KeyWordID": key_word_id,
                             })
                     except Exception as e:
                         logger.warning(f"Error processing card: {e}")
@@ -93,8 +112,8 @@ async def extract_metadata(sub_category: str) -> List[Dict[str, str]]:
 
                 logger.info(f"Found {len(results)} tenders for {sub_category}")
                 db_manager.log_scraping(
-                    category=next((k for k, v in MAIN_TO_SUB.items() if sub_category in v), "Unknown"),
-                    subcategory=sub_category,
+                    key_word_id=key_word_id,
+                    classification_id=classification_id,
                     count=len(results),
                     status="success"
                 )
@@ -104,8 +123,8 @@ async def extract_metadata(sub_category: str) -> List[Dict[str, str]]:
             logger.error(f"Attempt {attempt + 1} failed: {e}")
             if attempt == SCRAPER_CONFIG["max_retries"] - 1:
                 db_manager.log_scraping(
-                    category=next((k for k, v in MAIN_TO_SUB.items() if sub_category in v), "Unknown"),
-                    subcategory=sub_category,
+                    key_word_id=key_word_id,
+                    classification_id=classification_id,
                     count=0,
                     status="failed",
                     error=str(e)

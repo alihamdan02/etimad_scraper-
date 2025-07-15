@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-
 load_dotenv()
 
 MYSQL_CONFIG = {
@@ -53,8 +52,3 @@ SCRAPER_CONFIG = {
     "concurrent_requests": 5,
     "batch_size": 20
 }
-
-MAIN_TO_SUB = {
-    "ادارة البيانات": ["حوكمة البيانات", "استراتيجية البيانات", "ذكاء الأعمال"],
-}
-
